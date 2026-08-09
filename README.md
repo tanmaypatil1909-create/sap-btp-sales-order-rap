@@ -102,7 +102,9 @@ Building this wasn't a straight line — a few of the harder problems worked thr
 
 ## Screenshots
 
-*(Add screenshots or a short demo GIF here — list report with status badges, object page with draft indicator, material auto-fill in action)*
+![List Report](screenshots/list-report.png)
+   ![Object Page](screenshots/object-page.png)
+   ![Items with Material Auto-fill](screenshots/items-table.png)
 
 ---
 
