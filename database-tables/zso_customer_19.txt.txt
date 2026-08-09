@@ -1,0 +1,14 @@
+@EndUserText.label : 'Customer Master'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #ALLOWED
+define table zso_customer_19 {
+
+  key client      : abap.clnt not null;
+  key customer_id : abap.char(10) not null;
+  customer_name   : abap.char(40);
+  city            : abap.char(30);
+  country         : abap.char(3);
+
+}

@@ -1,0 +1,26 @@
+@EndUserText.label : 'Sales Order Item'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zso_item_19 {
+
+  key client            : abap.clnt not null;
+  key sales_order_uuid  : sysuuid_x16 not null;
+  key item_no           : abap.numc(6) not null;
+  material_id           : abap.char(18);
+  @Semantics.quantity.unitOfMeasure : 'zso_item_19.unit'
+  quantity              : abap.quan(13,3);
+  unit                  : abap.unit(3);
+  @Semantics.amount.currencyCode : 'zso_item_19.currency_code'
+  unit_price            : abap.curr(15,2);
+  currency_code         : abap.cuky;
+  @Semantics.amount.currencyCode : 'zso_item_19.currency_code'
+  item_amount           : abap.curr(15,2);
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}

@@ -1,0 +1,17 @@
+@EndUserText.label : 'Material Master'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #ALLOWED
+define table zso_material_19 {
+
+  key client      : abap.clnt not null;
+  key material_id : abap.char(18) not null;
+  material_name   : abap.char(40);
+  unit            : abap.unit(3);
+  currency_code   : abap.cuky;
+  @Semantics.amount.currencyCode : 'zso_material_19.currency_code'
+  unit_price      : abap.curr(15,2);
+  stock_quantity  : abap.dec(9,2);
+
+}

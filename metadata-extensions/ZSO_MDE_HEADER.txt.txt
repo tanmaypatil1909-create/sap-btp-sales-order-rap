@@ -1,0 +1,101 @@
+@Metadata.layer: #CORE
+
+annotate view ZC_SO_HEADER_19 with
+{
+
+  @UI.facet: [
+
+  {
+   id: 'General',
+   type: #IDENTIFICATION_REFERENCE,
+   label: 'General Information',
+   position: 10
+  },
+
+  {
+   id: 'Items',
+   purpose: #STANDARD,
+   type: #LINEITEM_REFERENCE,
+   label: 'Sales Order Items',
+   position: 20,
+   targetElement: '_Items'
+  },
+
+  {
+   id: 'AdminData',
+   type: #FIELDGROUP_REFERENCE,
+   label: 'Administrative Data',
+   position: 30,
+   targetQualifier: 'AdminData'
+  }
+
+  ]
+
+  @UI.lineItem: [{ position: 55 }]
+  @UI.identification: [{ position: 55 }]
+  discount_percent;
+
+  @UI.selectionField: [{ position: 10 }]
+  @UI.lineItem: [{ position: 10 }]
+  @UI.identification: [{ position: 10 }]
+  sales_order_id;
+
+  @UI.selectionField: [{ position: 20 }]
+  @UI.lineItem: [{ position: 20 }]
+  @UI.identification: [{ position: 20 }]
+  customer_id;
+
+  @UI.lineItem: [{ position: 30 }]
+  @UI.identification: [{ position: 30 }]
+  order_date;
+
+  @UI.selectionField: [{ position: 40 }]
+  @UI.lineItem: [{ position: 40 }]
+  @UI.identification: [{ position: 40 }]
+  currency_code;
+
+  @UI.lineItem: [{ position: 50 }]
+  @UI.identification: [{ position: 50 }]
+  total_amount;
+
+  @UI.selectionField: [{ position: 60 }]
+  @UI.lineItem: [{ position: 60, criticality: 'StatusCriticality', criticalityRepresentation: #WITH_ICON }]
+  @UI.identification: [
+    { position: 60, criticality: 'StatusCriticality', criticalityRepresentation: #WITH_ICON },
+
+   {
+    type: #FOR_ACTION,
+    dataAction: 'ReleaseOrder',
+    label: 'Release Order',
+    position: 70
+  },
+
+  {
+    type: #FOR_ACTION,
+    dataAction: 'CompleteOrder',
+    label: 'Complete Order',
+    position: 80
+  },
+
+  {
+    type: #FOR_ACTION,
+    dataAction: 'CancelOrder',
+    label: 'Cancel Order',
+    position: 90
+  }
+  ]
+  status;
+
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 10 }]
+  created_by;
+
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 20 }]
+  created_at;
+
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 30 }]
+  last_changed_by;
+
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 40 }]
+  last_changed_at;
+
+}

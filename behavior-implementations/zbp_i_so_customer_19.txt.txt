@@ -1,0 +1,19 @@
+CLASS lhc_ZI_SO_CUSTOMER_19 DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
+  PRIVATE SECTION.
+
+    METHODS get_global_authorization
+      FOR GLOBAL AUTHORIZATION
+      IMPORTING
+        REQUEST requested_authorizations
+      FOR Customer
+      RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_ZI_SO_CUSTOMER_19 IMPLEMENTATION.
+
+  METHOD get_global_authorization.
+  ENDMETHOD.
+
+ENDCLASS.

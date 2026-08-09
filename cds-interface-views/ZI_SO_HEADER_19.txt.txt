@@ -1,0 +1,67 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Sales Order Header Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+
+define root view entity ZI_SO_HEADER_19
+  as select from zso_header_19
+
+  composition [0..*] of ZI_SO_ITEM_19 as _Items
+
+  association to ZI_SO_CUSTOMER_19    as _Customer on $projection.customer_id = _Customer.customer_id
+{
+  key sales_order_uuid,
+
+      sales_order_id,
+
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_SO_CUSTOMER_19', element: 'customer_id' } }]
+      customer_id,
+
+      order_date,
+
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_Currency', element: 'Currency' } }]
+      currency_code,
+
+      @Semantics.amount.currencyCode: 'currency_code'
+      total_amount,
+
+      discount_percent,
+
+      @ObjectModel.text.element: ['StatusText']
+      @UI.textArrangement: #TEXT_ONLY
+      status,
+      case status
+      when 'O' then 'Open'
+      when 'R' then 'Released'
+      when 'C' then 'Completed'
+      when 'D' then 'Draft'
+      when 'P' then 'Pending'
+      when 'X' then 'Cancelled'
+      else 'Unknown'
+      end as StatusText,
+
+      case status
+        when 'O' then 0
+        when 'R' then 2
+        when 'C' then 3
+        when 'D' then 0
+        when 'P' then 1
+        when 'X' then 1
+        else 0
+      end as StatusCriticality,
+      @Semantics.user.createdBy: true
+      created_by,
+
+      @Semantics.systemDateTime.createdAt: true
+      created_at,
+
+      @Semantics.user.lastChangedBy: true
+      last_changed_by,
+
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at,
+
+      local_last_changed_at,
+
+      _Items,
+      _Customer
+}

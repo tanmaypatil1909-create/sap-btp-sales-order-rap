@@ -1,0 +1,53 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Sales Order Header Projection'
+@Metadata.allowExtensions: true
+
+define root view entity ZC_SO_HEADER_19
+  provider contract transactional_query
+  as projection on ZI_SO_HEADER_19
+{
+  key sales_order_uuid,
+
+      @EndUserText.label: 'Created By'
+      created_by,
+
+      @EndUserText.label: 'Created On'
+      created_at,
+
+      @EndUserText.label: 'Changed By'
+      last_changed_by,
+
+      @EndUserText.label: 'Changed On'
+      last_changed_at,
+
+      local_last_changed_at,
+
+      @EndUserText.label: 'Sales Order ID'
+      sales_order_id,
+
+      @EndUserText.label: 'Customer ID'
+      customer_id,
+
+      @EndUserText.label: 'Order Date'
+      order_date,
+
+      @EndUserText.label: 'Currency'
+      currency_code,
+
+      @EndUserText.label: 'Total Amount'
+      total_amount,
+
+      @EndUserText.label: 'Status'
+      status,
+
+      @EndUserText.label: 'Status Text'
+      StatusText,
+
+      StatusCriticality,
+
+      @EndUserText.label: 'Discount %'
+      discount_percent,
+
+      _Items : redirected to composition child ZC_SO_ITEM_19,
+      _Customer
+}

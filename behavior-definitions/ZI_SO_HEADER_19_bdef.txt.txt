@@ -1,0 +1,119 @@
+managed implementation in class zbp_i_so_header_19 unique;
+strict (2);
+with draft;
+
+define behavior for ZI_SO_HEADER_19 alias SalesOrder
+persistent table zso_header_19
+draft table zso_header_19_d
+lock master total etag local_last_changed_at
+authorization master ( instance )
+etag master local_last_changed_at
+early numbering
+{
+
+  create;
+  update;
+  delete;
+
+  action ( features : instance ) ReleaseOrder;
+action ( features : instance ) CompleteOrder;
+action ( features : instance ) CancelOrder;
+
+  field ( readonly )
+    sales_order_uuid,
+    created_by,
+    created_at,
+    last_changed_by,
+    last_changed_at,
+    local_last_changed_at,
+    status;
+
+  association _Items { create; }
+  association _Customer;
+
+  determination SetDefaultStatus on modify { create; }
+  determination ApplyDiscountToTotal on save { field discount_percent; }
+
+  validation ValidateSalesOrderID on save { create; update; field sales_order_id; }
+  validation ValidateCustomerID   on save { create; update; field customer_id; }
+  validation ValidateOrderDate    on save { create; update; field order_date; }
+
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Edit;
+  draft action Resume;
+  draft determine action Prepare;
+
+ mapping for zso_header_19
+{
+  sales_order_uuid      = sales_order_uuid;
+  sales_order_id        = sales_order_id;
+  customer_id           = customer_id;
+  order_date            = order_date;
+  currency_code         = currency_code;
+  total_amount          = total_amount;
+  discount_percent      = discount_percent;
+  status                = status;
+  created_by            = created_by;
+  created_at            = created_at;
+  last_changed_by       = last_changed_by;
+  last_changed_at       = last_changed_at;
+  local_last_changed_at = local_last_changed_at;
+}
+
+}
+
+define behavior for ZI_SO_ITEM_19 alias SalesOrderItem
+persistent table zso_item_19
+lock dependent by _Header
+draft table zso_item_19_d
+authorization dependent by _Header
+etag master local_last_changed_at
+early numbering
+{
+  update;
+  delete;
+
+  field ( readonly )
+    sales_order_uuid,
+    item_no,
+    item_amount,
+    created_by,
+    created_at,
+    last_changed_by,
+    last_changed_at,
+    local_last_changed_at;
+
+  association _Header;
+  association _material;
+
+  determination CalculateItemAmount on modify { create; field quantity, unit_price; }
+  determination SetItemAmountToHeader on save { create; update; delete; }
+  determination SetUnitPriceFromMaterial on modify { field material_id; }
+
+  validation ValidateQuantity on save { create; update; field quantity; }
+  validation ValidateMaterial on save { create; update; field material_id; }
+  validation ValidateStockAvailability on save { create; update; field quantity, material_id; }
+
+ side effects {
+  field material_id affects field unit_price, field item_amount, field unit;
+}
+
+
+  mapping for zso_item_19
+  {
+    sales_order_uuid      = sales_order_uuid;
+    item_no               = item_no;
+    material_id           = material_id;
+    quantity               = quantity;
+    unit                   = unit;
+    unit_price             = unit_price;
+    currency_code          = currency_code;
+    item_amount            = item_amount;
+    created_by              = created_by;
+    created_at               = created_at;
+    last_changed_by          = last_changed_by;
+    last_changed_at           = last_changed_at;
+    local_last_changed_at      = local_last_changed_at;
+  }
+}

@@ -1,0 +1,16 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Customer Master Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+
+define root view entity ZI_SO_CUSTOMER_19
+  as select from zso_customer_19
+{
+      @ObjectModel.text.element: ['CustomerName']
+  key customer_id,
+
+      customer_name as CustomerName,
+
+      city,
+
+      country
+}

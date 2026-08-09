@@ -1,0 +1,588 @@
+CLASS lhc_salesorderitem DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
+  PRIVATE SECTION.
+
+    METHODS CalculateItemAmount FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR SalesOrderItem~CalculateItemAmount.
+
+    METHODS SetItemAmountToHeader FOR DETERMINE ON SAVE
+      IMPORTING keys FOR SalesOrderItem~SetItemAmountToHeader.
+
+    METHODS ValidateMaterial FOR VALIDATE ON SAVE
+      IMPORTING keys FOR SalesOrderItem~ValidateMaterial.
+
+    METHODS ValidateQuantity FOR VALIDATE ON SAVE
+      IMPORTING keys FOR SalesOrderItem~ValidateQuantity.
+    METHODS SetUnitPriceFromMaterial FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR SalesOrderItem~SetUnitPriceFromMaterial.
+    METHODS ValidateStockAvailability FOR VALIDATE ON SAVE
+      IMPORTING keys FOR SalesOrderItem~ValidateStockAvailability.
+
+ENDCLASS.
+
+CLASS lhc_salesorderitem IMPLEMENTATION.
+
+  METHOD CalculateItemAmount.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem
+      FIELDS ( quantity unit_price )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_items).
+
+    MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem
+      UPDATE FIELDS ( item_amount )
+      WITH VALUE #( FOR item IN lt_items
+                     ( %tky        = item-%tky
+                       item_amount = item-quantity * item-unit_price ) ).
+
+  ENDMETHOD.
+
+
+  METHOD SetItemAmountToHeader.
+
+    DATA lt_order_uuids TYPE SORTED TABLE OF zso_header_19-sales_order_uuid
+      WITH UNIQUE KEY table_line.
+
+    LOOP AT keys INTO DATA(ls_key).
+      INSERT ls_key-sales_order_uuid INTO TABLE lt_order_uuids.
+    ENDLOOP.
+
+    LOOP AT lt_order_uuids INTO DATA(lv_uuid).
+
+      READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder BY \_Items
+        FIELDS ( item_amount )
+        WITH VALUE #( ( sales_order_uuid = lv_uuid ) )
+        RESULT DATA(lt_all_items).
+
+      READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder
+        FIELDS ( discount_percent )
+        WITH VALUE #( ( sales_order_uuid = lv_uuid ) )
+        RESULT DATA(lt_header_disc).
+
+      DATA(lv_discount) = COND #( WHEN lines( lt_header_disc ) > 0
+                                   THEN lt_header_disc[ 1 ]-discount_percent
+                                   ELSE 0 ).
+
+      DATA: lv_gross TYPE p LENGTH 15 DECIMALS 2,
+            lv_net   TYPE p LENGTH 15 DECIMALS 2.
+      CLEAR: lv_gross, lv_net.
+
+      LOOP AT lt_all_items INTO DATA(ls_item).
+        lv_gross = lv_gross + ls_item-item_amount.
+      ENDLOOP.
+
+      lv_net = lv_gross - ( lv_gross * lv_discount / 100 ).
+
+      MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder
+        UPDATE FIELDS ( total_amount )
+        WITH VALUE #( ( sales_order_uuid = lv_uuid total_amount = lv_net ) ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD ValidateMaterial.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem FIELDS ( material_id )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_items).
+
+    LOOP AT lt_items INTO DATA(ls_item) WHERE material_id IS INITIAL.
+      APPEND VALUE #( %tky = ls_item-%tky ) TO failed-salesorderitem.
+      APPEND VALUE #( %tky = ls_item-%tky
+                       %msg = new_message( id = 'SY' number = '002'
+                                           severity = if_abap_behv_message=>severity-error
+                                           v1 = 'Material is mandatory' )
+                     ) TO reported-salesorderitem.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD ValidateQuantity.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem FIELDS ( quantity )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_items).
+
+    LOOP AT lt_items INTO DATA(ls_item) WHERE quantity <= 0.
+      APPEND VALUE #( %tky = ls_item-%tky ) TO failed-salesorderitem.
+      APPEND VALUE #( %tky = ls_item-%tky
+                       %msg = new_message( id = 'SY' number = '002'
+                                           severity = if_abap_behv_message=>severity-error
+                                           v1 = 'Quantity must be greater than zero' )
+                     ) TO reported-salesorderitem.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD SetUnitPriceFromMaterial.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem
+      FIELDS ( material_id )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_items).
+
+    DATA lt_material_ids TYPE SORTED TABLE OF zso_material_19-material_id
+      WITH UNIQUE KEY table_line.
+
+    LOOP AT lt_items INTO DATA(ls_item) WHERE material_id IS NOT INITIAL.
+      INSERT ls_item-material_id INTO TABLE lt_material_ids.
+    ENDLOOP.
+
+    IF lt_material_ids IS NOT INITIAL.
+
+      SELECT material_id, unit_price, currency_code, unit
+        FROM zso_material_19
+        FOR ALL ENTRIES IN @lt_material_ids
+        WHERE material_id = @lt_material_ids-table_line
+        INTO TABLE @DATA(lt_material_data).
+
+      MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrderItem
+        UPDATE FIELDS ( unit_price currency_code unit )
+        WITH VALUE #(
+          FOR ls_item2 IN lt_items
+          FOR ls_material IN lt_material_data
+          WHERE ( material_id = ls_item2-material_id )
+          ( %tky           = ls_item2-%tky
+            unit_price      = ls_material-unit_price
+            currency_code    = ls_material-currency_code
+            unit              = ls_material-unit )
+        ).
+
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD ValidateStockAvailability.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrderItem
+      FIELDS ( material_id quantity )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_items).
+
+    DATA lt_material_ids TYPE SORTED TABLE OF zso_material_19-material_id
+      WITH UNIQUE KEY table_line.
+
+    LOOP AT lt_items INTO DATA(ls_item) WHERE material_id IS NOT INITIAL.
+      INSERT ls_item-material_id INTO TABLE lt_material_ids.
+    ENDLOOP.
+
+    IF lt_material_ids IS NOT INITIAL.
+      SELECT material_id, stock_quantity FROM zso_material_19
+        FOR ALL ENTRIES IN @lt_material_ids
+        WHERE material_id = @lt_material_ids-table_line
+        INTO TABLE @DATA(lt_stock).
+    ENDIF.
+
+    LOOP AT lt_items INTO ls_item.
+
+      READ TABLE lt_stock INTO DATA(ls_stock)
+        WITH KEY material_id = ls_item-material_id.
+
+      IF sy-subrc = 0 AND ls_item-quantity > ls_stock-stock_quantity.
+
+        APPEND VALUE #( %tky = ls_item-%tky ) TO failed-salesorderitem.
+        APPEND VALUE #( %tky = ls_item-%tky
+                         %msg = new_message( id = 'SY' number = '002'
+                                             severity = if_abap_behv_message=>severity-error
+                                             v1 = 'Ordered quantity exceeds available stock' )
+                       ) TO reported-salesorderitem.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lhc_ZI_SO_HEADER_19 DEFINITION
+  INHERITING FROM cl_abap_behavior_handler.
+
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations
+      FOR INSTANCE AUTHORIZATION
+      IMPORTING
+                keys
+                  REQUEST requested_authorizations
+                  FOR SalesOrder
+      RESULT    result.
+
+    METHODS SetDefaultStatus
+      FOR DETERMINE ON MODIFY
+      IMPORTING
+        keys
+          FOR SalesOrder~SetDefaultStatus.
+
+    METHODS EarlyNumbering_Create
+      FOR NUMBERING
+      IMPORTING
+        entities
+          FOR CREATE SalesOrder.
+
+    METHODS ReleaseOrder
+      FOR MODIFY
+      IMPORTING
+        keys
+          FOR ACTION SalesOrder~ReleaseOrder.
+
+    METHODS CompleteOrder
+      FOR MODIFY
+      IMPORTING
+        keys
+          FOR ACTION SalesOrder~CompleteOrder.
+
+    METHODS ValidateCustomerID
+      FOR VALIDATE ON SAVE
+      IMPORTING keys
+                  FOR SalesOrder~ValidateCustomerID.
+
+    METHODS ValidateOrderDate
+      FOR VALIDATE ON SAVE
+      IMPORTING keys
+                  FOR SalesOrder~ValidateOrderDate.
+
+    METHODS ValidateSalesOrderID
+      FOR VALIDATE ON SAVE
+      IMPORTING keys
+                  FOR SalesOrder~ValidateSalesOrderID.
+
+    METHODS get_instance_features
+    FOR INSTANCE FEATURES
+    IMPORTING keys
+    REQUEST requested_features
+    FOR SalesOrder RESULT result.
+
+    METHODS cancelorder FOR MODIFY
+      IMPORTING keys FOR ACTION salesorder~cancelorder.
+
+    METHODS earlynumbering_cba_items FOR NUMBERING
+      IMPORTING entities FOR CREATE salesorder\_items.
+
+    METHODS ApplyDiscountToTotal
+      FOR DETERMINE ON SAVE
+      IMPORTING keys FOR SalesOrder~ApplyDiscountToTotal.
+
+ENDCLASS.
+
+
+
+CLASS lhc_ZI_SO_HEADER_19 IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+
+
+  METHOD EarlyNumbering_Create.
+
+    mapped-salesorder = CORRESPONDING #( entities ).
+
+    LOOP AT mapped-salesorder ASSIGNING FIELD-SYMBOL(<mapping>).
+
+      TRY.
+          <mapping>-sales_order_uuid =
+            cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error.
+          "handle exception
+      ENDTRY.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+
+  METHOD SetDefaultStatus.
+
+    MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      UPDATE FIELDS ( status )
+      WITH VALUE #(
+        FOR key IN keys
+        (
+          %tky   = key-%tky
+          status = 'O'
+        )
+      ).
+
+  ENDMETHOD.
+
+
+
+  METHOD ReleaseOrder.
+
+    MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      UPDATE FIELDS ( status )
+      WITH VALUE #(
+        FOR key IN keys
+        (
+          %tky   = key-%tky
+          status = 'R'
+        )
+      ).
+
+  ENDMETHOD.
+
+
+
+  METHOD CompleteOrder.
+
+    MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      UPDATE FIELDS ( status )
+      WITH VALUE #(
+        FOR key IN keys
+        (
+          %tky   = key-%tky
+          status = 'C'
+        )
+      ).
+
+  ENDMETHOD.
+
+  METHOD ValidateCustomerID.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      FIELDS ( customer_id )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_header).
+
+    DATA lt_customer_ids TYPE SORTED TABLE OF zso_customer_19-customer_id
+      WITH UNIQUE KEY table_line.
+
+    LOOP AT lt_header INTO DATA(ls_header) WHERE customer_id IS NOT INITIAL.
+      INSERT ls_header-customer_id INTO TABLE lt_customer_ids.
+    ENDLOOP.
+
+    IF lt_customer_ids IS NOT INITIAL.
+      SELECT customer_id FROM zso_customer_19
+        FOR ALL ENTRIES IN @lt_customer_ids
+        WHERE customer_id = @lt_customer_ids-table_line
+        INTO TABLE @DATA(lt_valid_customers).
+    ENDIF.
+
+    LOOP AT lt_header INTO ls_header.
+
+      IF ls_header-customer_id IS INITIAL.
+
+        APPEND VALUE #( %tky = ls_header-%tky ) TO failed-salesorder.
+        APPEND VALUE #( %tky = ls_header-%tky
+                         %msg = new_message( id = 'SY' number = '002'
+                                             severity = if_abap_behv_message=>severity-error
+                                             v1 = 'Customer ID is mandatory' )
+                       ) TO reported-salesorder.
+
+      ELSEIF NOT line_exists( lt_valid_customers[ customer_id = ls_header-customer_id ] ).
+
+        APPEND VALUE #( %tky = ls_header-%tky ) TO failed-salesorder.
+        APPEND VALUE #( %tky = ls_header-%tky
+                         %msg = new_message( id = 'SY' number = '002'
+                                             severity = if_abap_behv_message=>severity-error
+                                             v1 = 'Customer ID does not exist in Customer Master' )
+                       ) TO reported-salesorder.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD ValidateOrderDate.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      FIELDS ( order_date )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_header).
+
+    LOOP AT lt_header INTO DATA(ls_header).
+
+      IF ls_header-order_date IS INITIAL.
+
+        APPEND VALUE #(
+          %tky = ls_header-%tky
+        ) TO failed-salesorder.
+
+        APPEND VALUE #(
+          %tky = ls_header-%tky
+          %msg = new_message(
+                    id       = 'SY'
+                    number   = '002'
+                    severity = if_abap_behv_message=>severity-error
+                    v1       = 'Order Date is mandatory'
+                 )
+        ) TO reported-salesorder.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD ValidateSalesOrderID.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      FIELDS ( sales_order_id )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_header).
+
+    DATA lt_order_ids TYPE SORTED TABLE OF zso_header_19-sales_order_id
+      WITH UNIQUE KEY table_line.
+
+    LOOP AT lt_header INTO DATA(ls_header) WHERE sales_order_id IS NOT INITIAL.
+      INSERT ls_header-sales_order_id INTO TABLE lt_order_ids.
+    ENDLOOP.
+
+    DATA lt_existing_orders TYPE SORTED TABLE OF zso_header_19
+      WITH UNIQUE KEY sales_order_uuid.
+
+    IF lt_order_ids IS NOT INITIAL.
+      SELECT sales_order_uuid, sales_order_id FROM zso_header_19
+        FOR ALL ENTRIES IN @lt_order_ids
+        WHERE sales_order_id = @lt_order_ids-table_line
+        INTO CORRESPONDING FIELDS OF TABLE @lt_existing_orders.
+    ENDIF.
+
+    LOOP AT lt_header INTO ls_header.
+
+      IF ls_header-sales_order_id IS INITIAL.
+
+        APPEND VALUE #( %tky = ls_header-%tky ) TO failed-salesorder.
+        APPEND VALUE #( %tky = ls_header-%tky
+                         %msg = new_message( id = 'SY' number = '002'
+                                             severity = if_abap_behv_message=>severity-error
+                                             v1 = 'Sales Order ID is mandatory' )
+                       ) TO reported-salesorder.
+
+      ELSE.
+
+        LOOP AT lt_existing_orders INTO DATA(ls_existing)
+          WHERE sales_order_id = ls_header-sales_order_id
+            AND sales_order_uuid <> ls_header-sales_order_uuid.
+
+          APPEND VALUE #( %tky = ls_header-%tky ) TO failed-salesorder.
+          APPEND VALUE #( %tky = ls_header-%tky
+                           %msg = new_message( id = 'SY' number = '002'
+                                               severity = if_abap_behv_message=>severity-error
+                                               v1 = 'Sales Order ID already exists' )
+                         ) TO reported-salesorder.
+
+          EXIT.
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+  METHOD get_instance_features.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder FIELDS ( status )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_header).
+
+    result = VALUE #( FOR ls IN lt_header
+      ( %tky                    = ls-%tky
+        %action-ReleaseOrder    = COND #( WHEN ls-status = 'O' THEN if_abap_behv=>fc-o-enabled ELSE if_abap_behv=>fc-o-disabled )
+        %action-CompleteOrder   = COND #( WHEN ls-status = 'R' THEN if_abap_behv=>fc-o-enabled ELSE if_abap_behv=>fc-o-disabled )
+        %action-CancelOrder     = COND #( WHEN ls-status = 'O' THEN if_abap_behv=>fc-o-enabled ELSE if_abap_behv=>fc-o-disabled )
+      ) ).
+
+  ENDMETHOD.
+
+  METHOD earlynumbering_cba_items.
+
+    LOOP AT entities INTO DATA(ls_entity).
+
+      READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder BY \_Items
+        FIELDS ( item_no )
+        WITH VALUE #( ( %tky = ls_entity-%tky ) )
+        RESULT DATA(lt_existing_items).
+
+      DATA(lv_max) = REDUCE i( INIT x = 0
+                                FOR item IN lt_existing_items
+                                NEXT x = COND #( WHEN item-item_no > x THEN item-item_no ELSE x ) ).
+
+      LOOP AT ls_entity-%target ASSIGNING FIELD-SYMBOL(<ls_item>).
+
+        lv_max = lv_max + 10.
+        <ls_item>-item_no = lv_max.
+
+      ENDLOOP.
+
+      mapped-salesorderitem = CORRESPONDING #( BASE ( mapped-salesorderitem ) ls_entity-%target ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD CancelOrder.
+
+    MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      UPDATE FIELDS ( status )
+      WITH VALUE #(
+        FOR key IN keys
+        (
+          %tky   = key-%tky
+          status = 'X'
+        )
+      ).
+
+  ENDMETHOD.
+
+  METHOD ApplyDiscountToTotal.
+
+    READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+      ENTITY SalesOrder
+      FIELDS ( discount_percent )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_headers).
+
+    LOOP AT lt_headers INTO DATA(ls_header).
+
+      READ ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder BY \_Items
+        FIELDS ( item_amount )
+        WITH VALUE #( ( %tky = ls_header-%tky ) )
+        RESULT DATA(lt_items).
+
+      DATA: lv_gross TYPE p LENGTH 15 DECIMALS 2,
+            lv_net   TYPE p LENGTH 15 DECIMALS 2.
+      CLEAR: lv_gross, lv_net.
+
+      LOOP AT lt_items INTO DATA(ls_item).
+        lv_gross = lv_gross + ls_item-item_amount.
+      ENDLOOP.
+
+      lv_net = lv_gross - ( lv_gross * ls_header-discount_percent / 100 ).
+
+      MODIFY ENTITIES OF zi_so_header_19 IN LOCAL MODE
+        ENTITY SalesOrder
+        UPDATE FIELDS ( total_amount )
+        WITH VALUE #( ( %tky = ls_header-%tky total_amount = lv_net ) ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS.

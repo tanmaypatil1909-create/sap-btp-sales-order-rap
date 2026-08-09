@@ -1,0 +1,10 @@
+managed implementation in class zbp_i_so_material_19 unique;
+strict (2);
+
+define behavior for ZI_SO_MATERIAL_19 alias Material
+persistent table zso_material_19
+lock master
+authorization master ( global )
+{
+  field ( readonly ) material_id, MaterialName, unit, unit_price, currency_code;
+}

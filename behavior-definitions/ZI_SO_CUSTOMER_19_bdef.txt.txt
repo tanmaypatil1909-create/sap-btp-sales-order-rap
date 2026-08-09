@@ -1,0 +1,10 @@
+managed implementation in class zbp_i_so_customer_19 unique;
+strict (2);
+
+define behavior for ZI_SO_CUSTOMER_19 alias Customer
+persistent table zso_customer_19
+lock master
+authorization master ( global )
+{
+  field ( readonly ) customer_id, customername, city, country;
+}

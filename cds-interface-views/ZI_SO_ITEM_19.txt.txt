@@ -1,0 +1,43 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Sales Order Item Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+
+define view entity ZI_SO_ITEM_19
+  as select from zso_item_19
+
+  association to parent ZI_SO_HEADER_19 as _Header
+    on $projection.sales_order_uuid = _Header.sales_order_uuid
+
+  association to ZI_SO_MATERIAL_19 as _Material
+    on $projection.material_id = _Material.material_id
+
+{
+  key sales_order_uuid,
+  key item_no,
+
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_SO_MATERIAL_19', element: 'material_id' } }]
+      material_id,
+
+      @Semantics.quantity.unitOfMeasure: 'unit'
+      quantity,
+
+      unit,
+
+      @Semantics.amount.currencyCode: 'currency_code'
+      unit_price,
+
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_Currency', element: 'Currency' } }]
+      currency_code,
+
+      @Semantics.amount.currencyCode: 'currency_code'
+      item_amount,
+
+      created_by,
+      created_at,
+      last_changed_by,
+      last_changed_at,
+      local_last_changed_at,
+
+      _Header,
+      _Material
+}

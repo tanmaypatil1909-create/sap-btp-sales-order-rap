@@ -1,0 +1,27 @@
+@EndUserText.label : 'Draft table for entity ZI_SO_HEADER_19'
+@AbapCatalog.enhancement.category : #EXTENSIBLE_ANY
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zso_header_19_d {
+
+  key mandt             : mandt not null;
+  key sales_order_uuid  : sysuuid_x16 not null;
+  sales_order_id        : abap.char(10);
+  customer_id           : abap.char(10);
+  order_date            : abap.dats;
+  currency_code         : abap.cuky;
+  @Semantics.amount.currencyCode : 'zso_header_19_d.currency_code'
+  total_amount          : abap.curr(15,2);
+  discount_percent      : abap.dec(5,2);
+  status                : zso_status_de_19;
+  statustext            : abap.char(9);
+  statuscriticality     : abap.int1;
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+  "%admin"              : include sych_bdl_draft_admin_inc;
+
+}
