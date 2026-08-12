@@ -13,12 +13,17 @@ This project was built independently (self-taught, no internship) to demonstrate
 - **Draft handling** — full Edit / Activate / Discard / Resume / Prepare lifecycle, matching standard SAP Fiori UX patterns
 - **Side effects** — live UI field refresh (e.g., selecting a Material instantly updates Unit, Unit Price, and Item Amount without requiring a save)
 - **Status lifecycle** — Open → Released → Completed, or Open → Cancelled, driven by custom actions with dynamic button enablement (`get_instance_features`)
-- **Cascading business calculations**:
+-- **Cascading business calculations**:
   - Material selection auto-fills Unit Price, Unit, and Currency from Material Master
   - Item Amount = Quantity × Unit Price (auto-calculated)
   - Header Total Amount = sum of all Item Amounts, net of an order-level Discount %
+- **Multi-currency support**:
+  - Header currency is fixed to INR (the company's reporting currency), enforced via a system-set determination and a readonly field
+  - Materials can be priced in any supported currency (USD, EUR, GBP, JPY, AUD, CAD, AED, SGD); on item creation, price is automatically converted to INR using a dedicated Exchange Rate Master table
+  - A secondary USD reference figure (`unit_price_usd`, `item_amount_usd`) is calculated per item for stakeholders who think in dollars, independent of the item's original sourcing currency
 - **Validations**:
-  - Mandatory field checks (Sales Order ID, Customer ID, Order Date)
+  - - Mandatory field checks (Sales Order ID, Customer ID, Order Date)
+  - Order Date cannot be in the past
   - Referential integrity — Customer ID must exist in Customer Master
   - Uniqueness check — Sales Order ID cannot be duplicated (correctly distinguishes create vs. update)
   - Stock availability — ordered quantity cannot exceed Material Master stock
@@ -33,7 +38,7 @@ This project was built independently (self-taught, no internship) to demonstrate
 ## Architecture
 
 ```
-Database Tables (zso_header_19, zso_item_19, zso_customer_19, zso_material_19)
+Database Tables (zso_header_19, zso_item_19, zso_customer_19, zso_material_19, zso_exchange_rate_19)
         │
         ▼
 Interface CDS Views (ZI_SO_HEADER_19, ZI_SO_ITEM_19, ZI_SO_CUSTOMER_19, ZI_SO_MATERIAL_19)
@@ -72,8 +77,8 @@ SAP Fiori Elements (List Report + Object Page)
 | `ZI_SO_HEADER_19` / `ZC_SO_HEADER_19` | Root, draft-enabled | Sales Order Header — status lifecycle, discount, total |
 | `ZI_SO_ITEM_19` / `ZC_SO_ITEM_19` | Composition child, draft-enabled | Sales Order Items — quantity, pricing, amount |
 | `ZI_SO_CUSTOMER_19` | Root, read-only | Customer Master (value help + referential validation source) |
-| `ZI_SO_MATERIAL_19` | Root, read-only | Material Master (value help + price/stock lookup source) |
-
+|| `ZI_SO_MATERIAL_19` | Root, read-only | Material Master (value help + price/stock lookup source) |
+| `ZI_SO_EXCHANGE_RATE_19` | Root, read-only | Exchange Rate Master — currency-to-INR conversion rates |
 ---
 
 ## Key Technical Challenges Solved
@@ -86,7 +91,7 @@ Building this wasn't a straight line — a few of the harder problems worked thr
 - **Draft vs. projection BDEF syntax** — the interface BDEF uses `with draft;` and `draft action ... optimized;`, while the projection BDEF requires the different `use draft;` / `use action` syntax, plus `with draft;` inside each association block. Easy to get wrong and got several rounds of syntax errors before landing on the correct combination.
 - **Side effects scoping** — SAP RAP only allows a single trigger field to appear once per `side effects` block; multiple target fields for the same trigger must be comma-separated under one statement, not repeated as separate statements.
 - **Silent mapping gap** — a field (`discount_percent`) was exposed in the CDS view and used correctly within a single request, but was never persisted because it was missing from the BDEF's `mapping for` block — a good reminder that CDS exposure and DB persistence mapping are two separate steps.
-
+ - **Currency conversion consistency** — since the header currency is fixed to INR but materials can be priced in any currency, conversion logic had to run at the point of item creation (not deferred), and a separate reference-currency calculation had to be scoped carefully (`field unit_price, quantity`) to avoid re-triggering the same recursion issue seen earlier in the project.
 ---
 
 ## Tech Stack
