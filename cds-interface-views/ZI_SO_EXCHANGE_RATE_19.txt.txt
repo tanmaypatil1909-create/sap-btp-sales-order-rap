@@ -1,0 +1,11 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Exchange Rate Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+
+define root view entity ZI_SO_EXCHANGE_RATE_19
+  as select from zso_exchangerate
+{
+  key from_currency,
+
+      rate_to_inr
+}

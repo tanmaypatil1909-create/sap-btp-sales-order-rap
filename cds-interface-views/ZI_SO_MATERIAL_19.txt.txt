@@ -20,7 +20,8 @@ define root view entity ZI_SO_MATERIAL_19
       @Semantics.amount.currencyCode: 'currency_code'
       unit_price,
 
-     stock_quantity,
- 
+      stock_quantity,
+
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_SO_EXCHANGE_RATE_19', element: 'from_currency' } }]
       currency_code
 }

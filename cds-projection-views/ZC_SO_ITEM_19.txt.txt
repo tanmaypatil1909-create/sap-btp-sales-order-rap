@@ -25,6 +25,12 @@ define view entity ZC_SO_ITEM_19
 
     @EndUserText.label: 'Item Amount'
     item_amount,
+    
+    @EndUserText.label: 'Item Amount (USD)'
+    item_amount_usd,
+    
+    @EndUserText.label: 'Reference Price (USD)'
+    unit_price_usd,
 
     created_by,
     created_at,

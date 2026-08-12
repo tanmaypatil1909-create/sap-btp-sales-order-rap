@@ -1,0 +1,10 @@
+managed implementation in class zbp_i_so_exchange_rate_19 unique;
+strict (2);
+
+define behavior for ZI_SO_EXCHANGE_RATE_19 alias ExchangeRate
+persistent table zso_exchangerate
+lock master
+authorization master ( global )
+{
+  field ( readonly ) from_currency, rate_to_inr;
+}

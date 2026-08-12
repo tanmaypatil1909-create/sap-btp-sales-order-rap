@@ -26,13 +26,17 @@ action ( features : instance ) CancelOrder;
     last_changed_by,
     last_changed_at,
     local_last_changed_at,
-    status;
+    status,
+    total_amount,
+    currency_code;
 
   association _Items { create; }
   association _Customer;
 
   determination SetDefaultStatus on modify { create; }
   determination ApplyDiscountToTotal on save { field discount_percent; }
+  determination SetDefaultCurrency on modify { create; }
+ determination SetUsdTotalToHeader on save { field discount_percent; }
 
   validation ValidateSalesOrderID on save { create; update; field sales_order_id; }
   validation ValidateCustomerID   on save { create; update; field customer_id; }
@@ -77,11 +81,15 @@ early numbering
   field ( readonly )
     sales_order_uuid,
     item_no,
+    unit_price,
+    unit_price_usd,
     item_amount,
+    currency_code,
     created_by,
     created_at,
     last_changed_by,
     last_changed_at,
+    item_amount_usd,
     local_last_changed_at;
 
   association _Header;
@@ -90,30 +98,32 @@ early numbering
   determination CalculateItemAmount on modify { create; field quantity, unit_price; }
   determination SetItemAmountToHeader on save { create; update; delete; }
   determination SetUnitPriceFromMaterial on modify { field material_id; }
+ determination CalculateUsdReference on modify { field unit_price, quantity; }
 
   validation ValidateQuantity on save { create; update; field quantity; }
   validation ValidateMaterial on save { create; update; field material_id; }
   validation ValidateStockAvailability on save { create; update; field quantity, material_id; }
 
  side effects {
-  field material_id affects field unit_price, field item_amount, field unit;
+  field material_id affects field unit_price, field item_amount, field unit, field currency_code;
 }
 
-
-  mapping for zso_item_19
-  {
-    sales_order_uuid      = sales_order_uuid;
-    item_no               = item_no;
-    material_id           = material_id;
-    quantity               = quantity;
-    unit                   = unit;
-    unit_price             = unit_price;
-    currency_code          = currency_code;
-    item_amount            = item_amount;
-    created_by              = created_by;
-    created_at               = created_at;
-    last_changed_by          = last_changed_by;
-    last_changed_at           = last_changed_at;
-    local_last_changed_at      = local_last_changed_at;
-  }
+ mapping for zso_item_19
+{
+  sales_order_uuid      = sales_order_uuid;
+  item_no                = item_no;
+  material_id             = material_id;
+  quantity                 = quantity;
+  unit                      = unit;
+  unit_price                 = unit_price;
+  currency_code                = currency_code;
+  item_amount                    = item_amount;
+  unit_price_usd                  = unit_price_usd;
+  created_by                        = created_by;
+  created_at                         = created_at;
+  last_changed_by                     = last_changed_by;
+  last_changed_at                      = last_changed_at;
+  local_last_changed_at                 = local_last_changed_at;
+  item_amount_usd = item_amount_usd;
+}
 }

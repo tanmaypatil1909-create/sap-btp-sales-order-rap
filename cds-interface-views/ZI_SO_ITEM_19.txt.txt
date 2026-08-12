@@ -31,6 +31,12 @@ define view entity ZI_SO_ITEM_19
 
       @Semantics.amount.currencyCode: 'currency_code'
       item_amount,
+      
+      @EndUserText.label: 'Reference Price (USD)'
+      unit_price_usd,
+      
+      @EndUserText.label: 'Item Amount (USD)'
+      item_amount_usd,
 
       created_by,
       created_at,

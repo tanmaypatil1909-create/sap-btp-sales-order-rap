@@ -1,0 +1,12 @@
+@EndUserText.label : 'Exchange Rate Master'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #ALLOWED
+define table zso_exchangerate {
+
+  key client        : abap.clnt not null;
+  key from_currency : abap.cuky not null;
+  rate_to_inr       : abap.dec(9,4);
+
+}

@@ -35,5 +35,11 @@ annotate view ZC_SO_ITEM_19 with
   @UI.lineItem: [{ position: 60 }]
   @UI.identification: [{ position: 60 }]
   item_amount;
+  
+  @UI.lineItem: [{ position: 66 }]
+  item_amount_usd;
+  
+  @UI.lineItem: [{ position: 65 }]
+  unit_price_usd;
 
 }

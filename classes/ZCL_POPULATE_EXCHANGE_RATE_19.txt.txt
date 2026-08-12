@@ -1,0 +1,39 @@
+CLASS zcl_populate_exchange_rate_19 DEFINITION
+  PUBLIC FINAL CREATE PUBLIC.
+
+  PUBLIC SECTION.
+    INTERFACES if_oo_adt_classrun.
+
+ENDCLASS.
+
+CLASS zcl_populate_exchange_rate_19 IMPLEMENTATION.
+
+  METHOD if_oo_adt_classrun~main.
+
+    DATA: lt_rate TYPE STANDARD TABLE OF zso_exchangerate.
+
+    lt_rate = VALUE #(
+      ( client = sy-mandt from_currency = 'INR' rate_to_inr = '1.0000' )
+      ( client = sy-mandt from_currency = 'USD' rate_to_inr = '83.2500' )
+      ( client = sy-mandt from_currency = 'EUR' rate_to_inr = '90.1500' )
+      ( client = sy-mandt from_currency = 'GBP' rate_to_inr = '105.4000' )
+      ( client = sy-mandt from_currency = 'JPY' rate_to_inr = '0.5600' )
+      ( client = sy-mandt from_currency = 'AUD' rate_to_inr = '54.8000' )
+      ( client = sy-mandt from_currency = 'CAD' rate_to_inr = '60.9000' )
+      ( client = sy-mandt from_currency = 'AED' rate_to_inr = '22.6700' )
+      ( client = sy-mandt from_currency = 'SGD' rate_to_inr = '61.7500' )
+    ).
+
+    MODIFY zso_exchangerate FROM TABLE @lt_rate.
+
+    IF sy-subrc = 0.
+      out->write( |Records inserted: { lines( lt_rate ) }| ).
+      COMMIT WORK.
+    ELSE.
+      out->write( 'Insert failed.' ).
+      ROLLBACK WORK.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.

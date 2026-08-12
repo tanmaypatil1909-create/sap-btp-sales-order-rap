@@ -22,5 +22,7 @@ define table zso_item_19 {
   last_changed_by       : syuname;
   last_changed_at       : timestampl;
   local_last_changed_at : timestampl;
+  unit_price_usd        : abap.dec(15,2);
+  item_amount_usd       : abap.dec(15,2);
 
 }
